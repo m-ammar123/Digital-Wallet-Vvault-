@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>vVault — Digital Wallet</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
+<style>
+  :root {
+    --green:     #00c896;
+    --green-d:   #009e78;
+    --green-glow:#00c89633;
+    --dark:      #0a0f0d;
+    --card:      #111a16;
+    --card2:     #162019;
+    --border:    #1e2e26;
+    --text:      #e8f5f0;
+    --muted:     #6b8c7e;
+    --red:       #ff4d6d;
+    --yellow:    #ffd166;
+    --radius:    16px;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--dark);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow-x: hidden;
+  }
+  body::before {
+    content:'';
+    position:fixed; inset:0;
+    background-image:
+      linear-gradient(var(--border) 1px, transparent 1px),
+      linear-gradient(90deg, var(--border) 1px, transparent 1px);
+    background-size: 40px 40px;
+    opacity:.4;
+    pointer-events:none;
+  }
+  body::after {
+    content:'';
+    position:fixed;
+    width:600px; height:600px;
+    background: radial-gradient(circle, #00c89618 0%, transparent 70%);
+    top:-100px; left:-100px;
+    pointer-events:none;
+    animation: blobmove 8s ease-in-out infinite alternate;
+  }
+  @keyframes blobmove { to { transform: translate(200px, 300px); } }
+
+  .screen {
+    display: none;
+    width: 100%;
+    max-width: 420px;
+    padding: 16px;
+    position: relative;
+    z-index: 10;
+    animation: fadeUp .35s ease;
+  }
+  .screen.active { display: block; }
+  @keyframes fadeUp {
+    from { opacity:0; transform:translateY(24px); }
+    to   { opacity:1; transform:translateY(0); }
+  }
+  #screen-dashboard { max-width: 480px; }
+
+  .logo { font-family:'Syne',sans-serif; font-size:2rem; font-weight:800; color:var(--green); letter-spacing:-1px; }
+  .logo span { color:var(--text); }
+
+  .card { background:var(--card); border:1px solid var(--border); border-radius:var(--radius); padding:28px; margin-bottom:16px; }
+  .card-title { font-family:'Syne',sans-serif; font-size:1.3rem; font-weight:700; margin-bottom:6px; }
+  .card-sub { color:var(--muted); font-size:.88rem; margin-bottom:24px; }
+
+  .field { margin-bottom:14px; }
+  .field label { display:block; font-size:.78rem; color:var(--muted); font-weight:500; margin-bottom:6px; letter-spacing:.5px; text-transform:uppercase; }
+  .field input, .field select {
+    width:100%; background:var(--card2); border:1px solid var(--border);
+    border-radius:10px; padding:12px 14px; color:var(--text);
+    font-family:'DM Sans',sans-serif; font-size:.95rem; outline:none;
+    transition:border-color .2s, box-shadow .2s;
+  }
+  .field input:focus, .field select:focus { border-color:var(--green); box-shadow:0 0 0 3px var(--green-glow); }
+  .field select option { background:var(--card2); }
+
+  .btn { width:100%; padding:13px; border-radius:10px; border:none; font-family:'Syne',sans-serif; font-size:1rem; font-weight:700; cursor:pointer; transition:all .2s; letter-spacing:.3px; }
+  .btn-primary { background:var(--green); color:#0a0f0d; }
+  .btn-primary:hover { background:var(--green-d); transform:translateY(-1px); box-shadow:0 6px 20px var(--green-glow); }
+  .btn-primary:disabled { opacity:.5; cursor:not-allowed; transform:none; }
+  .btn-outline { background:transparent; color:var(--green); border:1px solid var(--green); margin-top:10px; }
+  .btn-outline:hover { background:var(--green-glow); }
+  .btn-ghost { background:var(--card2); color:var(--text); border:1px solid var(--border); margin-top:8px; }
+  .btn-ghost:hover { border-color:var(--muted); }
+  .btn-danger { background:transparent; color:var(--red); border:1px solid var(--red); margin-top:8px; }
+  .btn-danger:hover { background:#ff4d6d18; }
+
+  #toast {
+    position:fixed; bottom:28px; left:50%; transform:translateX(-50%);
+    background:var(--card); border:1px solid var(--border);
+    border-radius:50px; padding:12px 24px; font-size:.9rem;
+    z-index:9999; opacity:0; transition:opacity .3s;
+    white-space:nowrap; pointer-events:none;
+  }
+  #toast.show { opacity:1; }
+  #toast.success { border-color:var(--green); color:var(--green); }
+  #toast.error   { border-color:var(--red);   color:var(--red);   }
+
+  /* HOME */
+  .home-hero { text-align:center; padding:48px 0 32px; }
+  .home-hero .logo { font-size:3rem; margin-bottom:8px; }
+  .home-hero p { color:var(--muted); font-size:.95rem; margin-bottom:36px; }
+  .features { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:28px; }
+  .feature-item { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:16px; font-size:.82rem; }
+  .feature-item .icon { font-size:1.4rem; margin-bottom:6px; }
+  .feature-item strong { display:block; font-family:'Syne',sans-serif; margin-bottom:2px; }
+  .feature-item span { color:var(--muted); }
+
+  /* DASHBOARD */
+  .balance-card {
+    background:linear-gradient(135deg, #0d2318 0%, #0a1a12 100%);
+    border:1px solid var(--green); border-radius:20px; padding:28px;
+    margin-bottom:16px; position:relative; overflow:hidden;
+  }
+  .balance-card::before {
+    content:''; position:absolute; width:200px; height:200px;
+    background:radial-gradient(circle, #00c89620, transparent 70%);
+    top:-60px; right:-60px;
+  }
+  .balance-label { font-size:.78rem; color:var(--muted); text-transform:uppercase; letter-spacing:1px; margin-bottom:6px; }
+  .balance-amount { font-family:'Syne',sans-serif; font-size:2.4rem; font-weight:800; color:var(--green); line-height:1; margin-bottom:16px; }
+  .wallet-id { font-size:.8rem; color:var(--muted); font-family:monospace; background:var(--card2); display:inline-block; padding:4px 10px; border-radius:6px; }
+
+  .user-header { display:flex; align-items:center; gap:14px; margin-bottom:16px; }
+  .avatar { width:44px; height:44px; border-radius:50%; background:var(--green); color:#0a0f0d; font-family:'Syne',sans-serif; font-weight:800; font-size:1.1rem; display:flex; align-items:center; justify-content:center; }
+  .user-info { flex:1; }
+  .user-name { font-family:'Syne',sans-serif; font-weight:700; font-size:1.05rem; }
+  .user-phone { font-size:.82rem; color:var(--muted); }
+
+  .badge { display:inline-block; padding:3px 10px; border-radius:20px; font-size:.72rem; font-weight:700; font-family:'Syne',sans-serif; text-transform:uppercase; letter-spacing:.5px; }
+  .badge-personal { background:#00c89620; color:var(--green); border:1px solid var(--green); }
+  .badge-merchant  { background:#ffd16620; color:var(--yellow); border:1px solid var(--yellow); }
+  .badge-savings   { background:#8b5cf620; color:#a78bfa;       border:1px solid #8b5cf6; }
+
+  .stats-row { display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; margin-bottom:16px; }
+  .stat-box { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:14px; text-align:center; }
+  .stat-label { font-size:.72rem; color:var(--muted); text-transform:uppercase; letter-spacing:.5px; margin-bottom:4px; }
+  .stat-value { font-family:'Syne',sans-serif; font-size:.95rem; font-weight:700; }
+  .stat-value.in  { color:var(--green); }
+  .stat-value.out { color:var(--red); }
+
+  .action-grid { display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; margin-bottom:16px; }
+  .action-btn {
+    background:var(--card); border:1px solid var(--border);
+    border-radius:12px; padding:16px 8px; text-align:center;
+    cursor:pointer; transition:all .2s; font-family:'Syne',sans-serif;
+    font-size:.82rem; font-weight:700; color:var(--text);
+  }
+  .action-btn:hover { border-color:var(--green); color:var(--green); transform:translateY(-2px); }
+  .action-btn .action-icon { font-size:1.5rem; display:block; margin-bottom:6px; }
+
+  /* TRANSACTIONS */
+  .tx-list { display:flex; flex-direction:column; gap:8px; max-height:300px; overflow-y:auto; padding-right:4px; }
+  .tx-list::-webkit-scrollbar { width:4px; }
+  .tx-list::-webkit-scrollbar-track { background:transparent; }
+  .tx-list::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
+  .tx-item { display:flex; align-items:center; gap:12px; padding:12px; background:var(--card2); border:1px solid var(--border); border-radius:10px; }
+  .tx-icon { width:36px; height:36px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:1rem; flex-shrink:0; }
+  .tx-icon.in  { background:#00c89618; }
+  .tx-icon.out { background:#ff4d6d18; }
+  .tx-desc { flex:1; min-width:0; }
+  .tx-type { font-size:.88rem; font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .tx-time { font-size:.75rem; color:var(--muted); margin-top:2px; }
+  .tx-amount { font-family:'Syne',sans-serif; font-size:.92rem; font-weight:700; white-space:nowrap; }
+  .tx-amount.in  { color:var(--green); }
+  .tx-amount.out { color:var(--red); }
+  .empty-state { text-align:center; padding:32px; color:var(--muted); }
+  .e-icon { font-size:2.5rem; margin-bottom:8px; }
+
+  /* MODALS */
+  .modal-overlay {
+    display:none; position:fixed; inset:0;
+    background:#00000088; backdrop-filter:blur(4px);
+    z-index:100; align-items:flex-end; justify-content:center;
+  }
+  .modal-overlay.open { display:flex; animation:fadeIn .2s ease; }
+  @keyframes fadeIn { from { opacity:0; } to { opacity:1; } }
+  .modal-sheet {
+    background:var(--card); border:1px solid var(--border);
+    border-radius:24px 24px 0 0; padding:28px;
+    width:100%; max-width:480px;
+    animation: slideUp .25s ease;
+  }
+  @keyframes slideUp { from { transform:translateY(100%); } to { transform:translateY(0); } }
+  .modal-title { font-family:'Syne',sans-serif; font-size:1.2rem; font-weight:700; margin-bottom:4px; }
+  .modal-sub { color:var(--muted); font-size:.85rem; margin-bottom:20px; }
+  .modal-close { float:right; background:none; border:none; color:var(--muted); font-size:1.4rem; cursor:pointer; line-height:1; }
+
+  /* API Status indicator */
+  .api-badge {
+    display:inline-flex; align-items:center; gap:6px;
+    background:var(--card); border:1px solid var(--border);
+    border-radius:20px; padding:4px 12px; font-size:.75rem;
+    color:var(--muted); margin-bottom:16px;
+  }
+  .api-dot { width:7px; height:7px; border-radius:50%; background:var(--muted); }
+  .api-dot.online { background:var(--green); animation:pulse 2s infinite; }
+  .api-dot.offline { background:var(--red); }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+  .loading-overlay {
+    position:fixed; inset:0; background:#0a0f0dee; z-index:200;
+    display:none; align-items:center; justify-content:center; flex-direction:column; gap:16px;
+  }
+  .loading-overlay.show { display:flex; }
+  .spinner { width:40px; height:40px; border:3px solid var(--border); border-top-color:var(--green); border-radius:50%; animation:spin .8s linear infinite; }
+  @keyframes spin { to { transform:rotate(360deg); } }
+</style>
+</head>
+<body>
+
+<!-- Loading overlay -->
+<div class="loading-overlay" id="loading">
+  <div class="spinner"></div>
+  <div style="color:var(--muted); font-size:.9rem;">Connecting to C++ backend...</div>
+</div>
+
+<!-- Toast -->
+<div id="toast"></div>
+
+<!-- ══════════════ HOME ══════════════ -->
+<div class="screen active" id="screen-home">
+  <div class="home-hero">
+    <div class="logo">v<span>Vault</span></div>
+    <p>Your secure digital wallet — powered by C++ backend</p>
+    <div id="api-status" class="api-badge">
+      <div class="api-dot" id="api-dot"></div>
+      <span id="api-status-text">Checking backend...</span>
+    </div>
+  </div>
+
+  <div class="features">
+    <div class="feature-item"><div class="icon">⚡</div><strong>C++ Backend</strong><span>Crow HTTP REST API</span></div>
+    <div class="feature-item"><div class="icon">💾</div><strong>File Storage</strong><span>Persistent data</span></div>
+    <div class="feature-item"><div class="icon">🔐</div><strong>PIN Auth</strong><span>Secure access</span></div>
+    <div class="feature-item"><div class="icon">💸</div><strong>Transfers</strong><span>Send & receive</span></div>
+  </div>
+
+  <div class="card">
+    <button class="btn btn-primary" onclick="show('screen-login')">Login to Wallet</button>
+    <button class="btn btn-outline" onclick="show('screen-register')">Create Account</button>
+  </div>
+
+  <div style="text-align:center; color:var(--muted); font-size:.78rem; margin-top:8px;">
+    Demo: Ali Hassan — <code>0300-0000001</code> / PIN <code>1234</code>
+  </div>
+</div>
+
+<!-- ══════════════ REGISTER ══════════════ -->
+<div class="screen" id="screen-register">
+  <div class="card">
+    <div style="margin-bottom:20px;"><div class="logo" style="font-size:1.5rem;">v<span>Vault</span></div></div>
+    <div class="card-title">Create Account</div>
+    <div class="card-sub">Register a new vVault wallet</div>
+
+    <div class="field"><label>Full Name</label><input id="reg-name" type="text" placeholder="e.g. Ali Hassan"/></div>
+    <div class="field"><label>Phone Number</label><input id="reg-phone" type="text" placeholder="e.g. 0300-1234567"/></div>
+    <div class="field"><label>CNIC</label><input id="reg-cnic" type="text" placeholder="e.g. 35202-1234567-1"/></div>
+    <div class="field">
+      <label>Account Type</label>
+      <select id="reg-type" onchange="toggleBizField()">
+        <option value="personal">Personal</option>
+        <option value="merchant">Merchant</option>
+        <option value="savings">Savings</option>
+      </select>
+    </div>
+    <div class="field" id="field-bizname" style="display:none"><label>Business Name</label><input id="reg-biz" type="text" placeholder="e.g. My Shop"/></div>
+    <div class="field"><label>4-Digit PIN</label><input id="reg-pin" type="password" maxlength="4" placeholder="••••"/></div>
+    <div class="field"><label>Initial Deposit (Rs.)</label><input id="reg-deposit" type="number" placeholder="e.g. 5000" min="0"/></div>
+
+    <button class="btn btn-primary" id="reg-btn" onclick="register()">Create Account</button>
+    <button class="btn btn-ghost" onclick="show('screen-home')">← Back</button>
+  </div>
+</div>
+
+<!-- ══════════════ LOGIN ══════════════ -->
+<div class="screen" id="screen-login">
+  <div class="card">
+    <div style="margin-bottom:20px;"><div class="logo" style="font-size:1.5rem;">v<span>Vault</span></div></div>
+    <div class="card-title">Welcome Back</div>
+    <div class="card-sub">Login to your wallet</div>
+
+    <div class="field"><label>Phone Number</label><input id="login-phone" type="text" placeholder="0300-0000001"/></div>
+    <div class="field"><label>PIN</label><input id="login-pin" type="password" maxlength="4" placeholder="••••"/></div>
+
+    <button class="btn btn-primary" id="login-btn" onclick="login()">Login</button>
+    <button class="btn btn-outline" onclick="show('screen-register')">New Account</button>
+    <button class="btn btn-ghost" onclick="show('screen-home')">← Back</button>
+  </div>
+</div>
+
+<!-- ══════════════ DASHBOARD ══════════════ -->
+<div class="screen" id="screen-dashboard">
+  <!-- User Header -->
+  <div class="user-header">
+    <div class="avatar" id="dash-avatar">A</div>
+    <div class="user-info">
+      <div class="user-name" id="dash-name">User Name</div>
+      <div class="user-phone" id="dash-phone">Phone</div>
+    </div>
+    <span class="badge badge-personal" id="dash-badge">Personal</span>
+  </div>
+
+  <!-- Balance Card -->
+  <div class="balance-card">
+    <div class="balance-label">Available Balance</div>
+    <div class="balance-amount" id="dash-balance">Rs. 0</div>
+    <div class="wallet-id" id="dash-walletid">W-0000-0</div>
+  </div>
+
+  <!-- Stats -->
+  <div class="stats-row">
+    <div class="stat-box">
+      <div class="stat-label">Total In</div>
+      <div class="stat-value in" id="dash-totalin">Rs. 0</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-label">Total Out</div>
+      <div class="stat-value out" id="dash-totalout">Rs. 0</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-label">Transactions</div>
+      <div class="stat-value" id="dash-txcount">0 total</div>
+    </div>
+  </div>
+
+  <!-- Actions -->
+  <div class="action-grid">
+    <div class="action-btn" onclick="openModal('modal-deposit')">
+      <span class="action-icon">⬇️</span>Deposit
+    </div>
+    <div class="action-btn" onclick="openModal('modal-withdraw')">
+      <span class="action-icon">⬆️</span>Withdraw
+    </div>
+    <div class="action-btn" onclick="openModal('modal-send')">
+      <span class="action-icon">💸</span>Send
+    </div>
+  </div>
+
+  <!-- Transactions -->
+  <div class="card">
+    <div class="card-title" style="margin-bottom:14px;">Transaction History</div>
+    <div class="tx-list" id="dash-txlist">
+      <div class="empty-state"><div class="e-icon">📭</div>No transactions yet</div>
+    </div>
+  </div>
+
+  <button class="btn btn-danger" onclick="logout()">Logout 🔒</button>
+</div>
+
+<!-- ══════════════ MODALS ══════════════ -->
+<!-- Deposit -->
+<div class="modal-overlay" id="modal-deposit">
+  <div class="modal-sheet">
+    <button class="modal-close" onclick="closeModal('modal-deposit')">×</button>
+    <div class="modal-title">Deposit Money</div>
+    <div class="modal-sub">Add funds to your wallet</div>
+    <div class="field"><label>Amount (Rs.)</label><input id="dep-amount" type="number" placeholder="Enter amount" min="1"/></div>
+    <div class="field"><label>Description (optional)</label><input id="dep-desc" type="text" placeholder="e.g. Salary"/></div>
+    <button class="btn btn-primary" id="dep-btn" onclick="doDeposit()">Deposit</button>
+    <button class="btn btn-ghost" onclick="closeModal('modal-deposit')">Cancel</button>
+  </div>
+</div>
+
+<!-- Withdraw -->
+<div class="modal-overlay" id="modal-withdraw">
+  <div class="modal-sheet">
+    <button class="modal-close" onclick="closeModal('modal-withdraw')">×</button>
+    <div class="modal-title">Withdraw Money</div>
+    <div class="modal-sub">Withdraw cash from wallet</div>
+    <div class="field"><label>Amount (Rs.)</label><input id="with-amount" type="number" placeholder="Enter amount" min="1"/></div>
+    <div class="field"><label>Description (optional)</label><input id="with-desc" type="text" placeholder="e.g. ATM"/></div>
+    <button class="btn btn-primary" id="with-btn" onclick="doWithdraw()">Withdraw</button>
+    <button class="btn btn-ghost" onclick="closeModal('modal-withdraw')">Cancel</button>
+  </div>
+</div>
+
+<!-- Send -->
+<div class="modal-overlay" id="modal-send">
+  <div class="modal-sheet">
+    <button class="modal-close" onclick="closeModal('modal-send')">×</button>
+    <div class="modal-title">Send Money</div>
+    <div class="modal-sub">Transfer to another vVault user</div>
+    <div class="field"><label>Recipient Phone</label><input id="send-phone" type="text" placeholder="e.g. 0321-0000002"/></div>
+    <div class="field"><label>Amount (Rs.)</label><input id="send-amount" type="number" placeholder="Enter amount" min="1"/></div>
+    <button class="btn btn-primary" id="send-btn" onclick="doSend()">Send Money</button>
+    <button class="btn btn-ghost" onclick="closeModal('modal-send')">Cancel</button>
+  </div>
+</div>
+
+<script>
+// =============================================
+// CONFIG — Backend URL
+// Change this to match your C++ server address
+// =============================================
+const API_BASE = 'http://localhost:8080/api';
+
+// Session storage — current user
+let session = { phone: null, pin: null, user: null };
+
+// ── API helper ──
+async function api(endpoint, method = 'GET', body = null) {
+  const opts = {
+    method,
+    headers: { 'Content-Type': 'application/json' },
+  };
+  if (body) opts.body = JSON.stringify(body);
+  const res = await fetch(API_BASE + endpoint, opts);
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Server error');
+  return data;
+}
+
+// ── Loading spinner ──
+function setLoading(show) {
+  document.getElementById('loading').classList.toggle('show', show);
+}
+
+function setBtnLoading(id, loading, text) {
+  const btn = document.getElementById(id);
+  if (!btn) return;
+  btn.disabled = loading;
+  btn.textContent = loading ? '⏳ Please wait...' : text;
+}
+
+// ── Screen navigation ──
+function show(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+function openModal(id)  { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+// ── Toast ──
+function toast(msg, type = 'success') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'show ' + type;
+  setTimeout(() => (t.className = ''), 2800);
+}
+
+// ── Toggle business name field ──
+function toggleBizField() {
+  const type = document.getElementById('reg-type').value;
+  document.getElementById('field-bizname').style.display = type === 'merchant' ? 'block' : 'none';
+}
+
+// ── Check backend health ──
+async function checkBackend() {
+  const dot  = document.getElementById('api-dot');
+  const text = document.getElementById('api-status-text');
+  try {
+    const data = await api('/health');
+    dot.className  = 'api-dot online';
+    text.textContent = '✓ ' + data.server + ' connected';
+  } catch {
+    dot.className  = 'api-dot offline';
+    text.textContent = '✗ Backend offline — run C++ server';
+  }
+}
+
+// ── REGISTER ──
+async function register() {
+  const name    = document.getElementById('reg-name').value.trim();
+  const phone   = document.getElementById('reg-phone').value.trim();
+  const cnic    = document.getElementById('reg-cnic').value.trim();
+  const type    = document.getElementById('reg-type').value;
+  const pin     = document.getElementById('reg-pin').value.trim();
+  const deposit = parseFloat(document.getElementById('reg-deposit').value) || 0;
+  const biz     = document.getElementById('reg-biz').value.trim();
+
+  if (!name || !phone || !cnic || !pin) { toast('Please fill all fields', 'error'); return; }
+  if (pin.length !== 4 || isNaN(pin))   { toast('PIN must be 4 digits', 'error'); return; }
+
+  setBtnLoading('reg-btn', true, 'Create Account');
+  try {
+    const data = await api('/register', 'POST', {
+      name, phone, cnic, pin, accountType: type,
+      bizName: biz, initialDeposit: deposit
+    });
+    toast('✅ Account created! Wallet: ' + data.walletID);
+    setTimeout(() => show('screen-login'), 1200);
+  } catch (e) {
+    toast('❌ ' + e.message, 'error');
+  } finally {
+    setBtnLoading('reg-btn', false, 'Create Account');
+  }
+}
+
+// ── LOGIN ──
+async function login() {
+  const phone = document.getElementById('login-phone').value.trim();
+  const pin   = document.getElementById('login-pin').value.trim();
+
+  if (!phone || !pin) { toast('Enter phone and PIN', 'error'); return; }
+
+  setBtnLoading('login-btn', true, 'Login');
+  try {
+    const data = await api('/login', 'POST', { phone, pin });
+    session = { phone, pin, user: data.user };
+    renderDashboard(data.user);
+    show('screen-dashboard');
+    toast('Welcome back, ' + data.user.name.split(' ')[0] + '! 👋');
+  } catch (e) {
+    toast('❌ ' + e.message, 'error');
+  } finally {
+    setBtnLoading('login-btn', false, 'Login');
+  }
+}
+
+// ── LOGOUT ──
+function logout() {
+  session = { phone: null, pin: null, user: null };
+  show('screen-home');
+  toast('Logged out safely 🔒');
+}
+
+// ── RENDER DASHBOARD ──
+function renderDashboard(u) {
+  if (!u) return;
+  const w = u.wallet;
+  document.getElementById('dash-balance').textContent  = 'Rs. ' + w.balance.toLocaleString();
+  document.getElementById('dash-walletid').textContent = w.walletID;
+  document.getElementById('dash-name').textContent     = u.name;
+  document.getElementById('dash-phone').textContent    = u.phone;
+  document.getElementById('dash-avatar').textContent   = u.name[0].toUpperCase();
+  document.getElementById('dash-totalin').textContent  = 'Rs. ' + w.totalIn.toLocaleString();
+  document.getElementById('dash-totalout').textContent = 'Rs. ' + w.totalOut.toLocaleString();
+  document.getElementById('dash-txcount').textContent  = w.txCount + ' total';
+
+  const badge = document.getElementById('dash-badge');
+  const typeMap = { personal: 'Personal', merchant: 'Merchant', savings: 'Savings' };
+  badge.textContent = typeMap[u.accountType] || 'Personal';
+  badge.className   = 'badge badge-' + (u.accountType || 'personal');
+
+  const list = document.getElementById('dash-txlist');
+  if (!w.history || w.history.length === 0) {
+    list.innerHTML = '<div class="empty-state"><div class="e-icon">📭</div>No transactions yet</div>';
+    return;
+  }
+
+  const icons = { DEPOSIT:'⬇️', WITHDRAW:'⬆️', SENT:'💸', RECEIVED:'✅', OPENED:'🎉' };
+  const isIn  = t => ['DEPOSIT','RECEIVED','OPENED'].includes(t.type);
+
+  list.innerHTML = w.history.map(t => `
+    <div class="tx-item">
+      <div class="tx-icon ${isIn(t)?'in':'out'}">${icons[t.type]||'💳'}</div>
+      <div class="tx-desc">
+        <div class="tx-type">${t.description}</div>
+        <div class="tx-time">${t.timestamp}</div>
+      </div>
+      <div class="tx-amount ${isIn(t)?'in':'out'}">
+        ${isIn(t)?'+':'-'}Rs.${t.amount.toLocaleString()}
+      </div>
+    </div>
+  `).join('');
+}
+
+// ── REFRESH from backend ──
+async function refreshDashboard() {
+  if (!session.phone) return;
+  try {
+    const data = await api(`/statement/${session.phone}/${session.pin}`);
+    session.user = data;
+    renderDashboard(data);
+  } catch (e) {
+    toast('❌ ' + e.message, 'error');
+  }
+}
+
+// ── DEPOSIT ──
+async function doDeposit() {
+  const amount = parseFloat(document.getElementById('dep-amount').value);
+  const desc   = document.getElementById('dep-desc').value || 'Deposit';
+  if (!amount || amount <= 0) { toast('Enter valid amount', 'error'); return; }
+
+  setBtnLoading('dep-btn', true, 'Deposit');
+  try {
+    await api('/deposit', 'POST', { phone: session.phone, pin: session.pin, amount, description: desc });
+    closeModal('modal-deposit');
+    await refreshDashboard();
+    toast('Rs.' + amount.toLocaleString() + ' deposited ✅');
+    document.getElementById('dep-amount').value = '';
+    document.getElementById('dep-desc').value   = '';
+  } catch (e) {
+    toast('❌ ' + e.message, 'error');
+  } finally {
+    setBtnLoading('dep-btn', false, 'Deposit');
+  }
+}
+
+// ── WITHDRAW ──
+async function doWithdraw() {
+  const amount = parseFloat(document.getElementById('with-amount').value);
+  const desc   = document.getElementById('with-desc').value || 'Withdraw';
+  if (!amount || amount <= 0) { toast('Enter valid amount', 'error'); return; }
+
+  setBtnLoading('with-btn', true, 'Withdraw');
+  try {
+    await api('/withdraw', 'POST', { phone: session.phone, pin: session.pin, amount, description: desc });
+    closeModal('modal-withdraw');
+    await refreshDashboard();
+    toast('Rs.' + amount.toLocaleString() + ' withdrawn ✅');
+    document.getElementById('with-amount').value = '';
+    document.getElementById('with-desc').value   = '';
+  } catch (e) {
+    toast('❌ ' + e.message, 'error');
+  } finally {
+    setBtnLoading('with-btn', false, 'Withdraw');
+  }
+}
+
+// ── SEND MONEY ──
+async function doSend() {
+  const toPhone = document.getElementById('send-phone').value.trim();
+  const amount  = parseFloat(document.getElementById('send-amount').value);
+
+  if (!toPhone || !amount || amount <= 0) { toast('Fill all fields', 'error'); return; }
+
+  setBtnLoading('send-btn', true, 'Send Money');
+  try {
+    const data = await api('/send', 'POST', {
+      fromPhone: session.phone, pin: session.pin, toPhone, amount
+    });
+    closeModal('modal-send');
+    await refreshDashboard();
+    toast('Rs.' + amount.toLocaleString() + ' sent to ' + data.recipientName.split(' ')[0] + ' ✅');
+    document.getElementById('send-phone').value  = '';
+    document.getElementById('send-amount').value = '';
+  } catch (e) {
+    toast('❌ ' + e.message, 'error');
+  } finally {
+    setBtnLoading('send-btn', false, 'Send Money');
+  }
+}
+
+// On load — check backend
+checkBackend();
+</script>
+</body>
+</html>
