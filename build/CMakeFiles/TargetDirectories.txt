@@ -1,0 +1,3 @@
+C:/Users/Muhammad Ammar/OneDrive - Higher Education Commission/Desktop/vVault/build/CMakeFiles/vvault_server.dir
+C:/Users/Muhammad Ammar/OneDrive - Higher Education Commission/Desktop/vVault/build/CMakeFiles/edit_cache.dir
+C:/Users/Muhammad Ammar/OneDrive - Higher Education Commission/Desktop/vVault/build/CMakeFiles/rebuild_cache.dir

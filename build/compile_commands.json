@@ -1,0 +1,8 @@
+[
+{
+  "directory": "C:/Users/Muhammad Ammar/OneDrive - Higher Education Commission/Desktop/vVault/build",
+  "command": "C:\\msys64\\ucrt64\\bin\\g++.exe -DASIO_STANDALONE -DCROW_USE_STANDALONE_ASIO -I\"C:/Users/Muhammad Ammar/OneDrive - Higher Education Commission/Desktop/vVault/include\" -g -std=gnu++17 -O2 -Wall -o CMakeFiles\\vvault_server.dir\\main.cpp.obj -c \"C:\\Users\\Muhammad Ammar\\OneDrive - Higher Education Commission\\Desktop\\vVault\\main.cpp\"",
+  "file": "C:/Users/Muhammad Ammar/OneDrive - Higher Education Commission/Desktop/vVault/main.cpp",
+  "output": "C:/Users/Muhammad Ammar/OneDrive - Higher Education Commission/Desktop/vVault/build/CMakeFiles/vvault_server.dir/main.cpp.obj"
+}
+]
